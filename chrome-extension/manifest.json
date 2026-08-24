@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "FocusLens Web Tracker",
+  "version": "1.0",
+  "description": "Tracks active web usage for FocusLens Dashboard.",
+  "permissions": [
+    "tabs",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:8000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
