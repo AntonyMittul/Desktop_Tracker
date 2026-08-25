@@ -1,10 +1,11 @@
 'use client';
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { format, parseISO } from 'date-fns';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { parseISO } from 'date-fns';
+import { ActivityEvent } from '@/lib/api';
 
 interface ActivityTimelineProps {
-  events: any[];
+  events: ActivityEvent[];
 }
 
 export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ events }) => {
@@ -24,16 +25,51 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ events }) =>
       dateStr += 'Z';
     }
     const d = parseISO(dateStr);
-    const h = d.getHours();
     
     // Very naive categorization for MVP
     const app = event.application.toLowerCase();
-    if (app.includes('code') || app.includes('terminal')) {
-        hourlyData[h].productive += event.duration_seconds;
-    } else if (app.includes('chrome') || app.includes('edge') || app.includes('safari')) {
-        hourlyData[h].neutral += event.duration_seconds; 
-    } else {
-        hourlyData[h].distracting += event.duration_seconds;
+    const url = event.url ? event.url.toLowerCase() : '';
+    
+    let category = 'neutral';
+    // Productive apps/sites
+    if (app.includes('code') || app.includes('terminal') || url.includes('github.com') || url.includes('stackoverflow.com') || url.includes('localhost')) {
+        category = 'productive';
+    } 
+    // Distracting apps/sites
+    else if (url.includes('youtube.com') || url.includes('reddit.com') || url.includes('twitter.com') || url.includes('facebook.com') || url.includes('instagram.com') || app.includes('spotify')) {
+        category = 'distracting';
+    }
+
+    let currentStart = d.getTime();
+    let remainingMs = event.duration_seconds * 1000;
+
+    // Safety limit to avoid infinite loops if data is weird
+    let loops = 0;
+    while (remainingMs > 0 && loops < 24) {
+      const currentHourDate = new Date(currentStart);
+      const h = currentHourDate.getHours();
+      
+      const nextHourDate = new Date(currentStart);
+      nextHourDate.setHours(h + 1, 0, 0, 0);
+      
+      const msToNextHour = nextHourDate.getTime() - currentStart;
+      // If msToNextHour is 0 (which shouldn't happen), force it to advance to prevent infinite loop
+      const effectiveMsToNextHour = msToNextHour <= 0 ? 3600000 : msToNextHour;
+      
+      const msInThisHour = Math.min(remainingMs, effectiveMsToNextHour);
+      const secondsInThisHour = msInThisHour / 1000;
+      
+      if (category === 'productive') {
+        hourlyData[h].productive += secondsInThisHour;
+      } else if (category === 'distracting') {
+        hourlyData[h].distracting += secondsInThisHour;
+      } else {
+        hourlyData[h].neutral += secondsInThisHour;
+      }
+      
+      remainingMs -= msInThisHour;
+      currentStart += msInThisHour;
+      loops++;
     }
   });
 

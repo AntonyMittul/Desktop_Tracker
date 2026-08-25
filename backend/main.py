@@ -14,7 +14,7 @@ app = FastAPI(title="FocusLens API")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # Allows Next.js frontend
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"],  # Allows Next.js frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

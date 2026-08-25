@@ -12,21 +12,73 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchEvents = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getTodayEvents(1);
-        // Filter out the Windows Lock Screen so it doesn't skew our productivity stats
-        const filteredData = data.filter(e => e.application.toLowerCase() !== 'lockapp.exe');
-        setEvents(filteredData);
+        const eventsData = await getTodayEvents(1);
+        const filteredData = eventsData.filter(e => e.application.toLowerCase() !== 'lockapp.exe');
+        
+        // --- Conflict Resolution (Flattening) ---
+        const points: { time: number, type: 'start' | 'end', event: ActivityEvent, isDesktop: boolean }[] = [];
+        filteredData.forEach(e => {
+          let dStr = e.started_at;
+          if (!dStr.endsWith('Z') && !dStr.includes('+')) dStr += 'Z';
+          const start = new Date(dStr).getTime();
+          const end = start + e.duration_seconds * 1000;
+          if (start >= end) return;
+          const isDesktop = e.application !== 'Google Chrome';
+          points.push({ time: start, type: 'start', event: e, isDesktop });
+          points.push({ time: end, type: 'end', event: e, isDesktop });
+        });
+        
+        points.sort((a, b) => a.time - b.time);
+        
+        const activeDesktop = new Set<ActivityEvent>();
+        const activeChrome = new Set<ActivityEvent>();
+        const flattened: ActivityEvent[] = [];
+        
+        let currentEvent: ActivityEvent | null = null;
+        let currentStartTime = 0;
+        
+        for (let i = 0; i < points.length; i++) {
+          const pt = points[i];
+          if (pt.type === 'start') {
+            if (pt.isDesktop) activeDesktop.add(pt.event);
+            else activeChrome.add(pt.event);
+          } else {
+            if (pt.isDesktop) activeDesktop.delete(pt.event);
+            else activeChrome.delete(pt.event);
+          }
+          
+          let winner: ActivityEvent | null = null;
+          if (activeDesktop.size > 0) {
+            winner = Array.from(activeDesktop).sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())[0];
+          } else if (activeChrome.size > 0) {
+            winner = Array.from(activeChrome).sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())[0];
+          }
+          
+          if (winner !== currentEvent) {
+            if (currentEvent && currentStartTime < pt.time) {
+              flattened.push({
+                ...currentEvent,
+                started_at: new Date(currentStartTime).toISOString(),
+                duration_seconds: Math.round((pt.time - currentStartTime) / 1000)
+              });
+            }
+            currentEvent = winner;
+            currentStartTime = pt.time;
+          }
+        }
+        
+        const finalEvents = flattened.filter(e => e.duration_seconds > 0);
+        setEvents(finalEvents);
       } catch (e) {
-        console.error("Failed to fetch events", e);
+        console.error("Failed to fetch data", e);
       } finally {
         setLoading(false);
       }
     };
-    fetchEvents();
-    // Refresh every 30s
-    const interval = setInterval(fetchEvents, 30000);
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
 
