@@ -31,7 +31,7 @@ class ActivityEvent(Base):
     __tablename__ = "activity_events"
 
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id"))
+    device_id = Column(Integer, ForeignKey("devices.id"), index=True)
     application = Column(String, index=True)
     window_title = Column(String)
     url = Column(String, nullable=True)
