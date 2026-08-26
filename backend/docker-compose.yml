@@ -3,6 +3,7 @@ version: '3.8'
 services:
   db:
     image: postgres:15-alpine
+    restart: always
     environment:
       POSTGRES_USER: focuslens_user
       POSTGRES_PASSWORD: focuslens_password
