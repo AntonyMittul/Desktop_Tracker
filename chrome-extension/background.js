@@ -21,9 +21,34 @@ async function getDeviceId() {
   return null;
 }
 
-async function sendEvent(session) {
+async function syncQueue() {
+  const data = await chrome.storage.local.get("unsyncedEvents");
+  let queue = data.unsyncedEvents || [];
+  if (queue.length === 0) return;
+
   const deviceId = await getDeviceId();
-  if (!deviceId || !session.url) return;
+  if (!deviceId) return;
+
+  try {
+    const res = await fetch(`${API_URL}/activity/events?device_id=${deviceId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(queue)
+    });
+    
+    if (res.ok) {
+      await chrome.storage.local.set({ unsyncedEvents: [] });
+      console.log(`Successfully synced ${queue.length} events.`);
+    }
+  } catch (e) {
+    // Silently ignore fetch errors (backend is down). 
+    // The events remain in the queue for next time.
+    console.log("Backend unreachable, events queued for later sync.");
+  }
+}
+
+async function sendEvent(session) {
+  if (!session.url) return;
   if (session.url.startsWith("chrome://") || session.url.startsWith("edge://")) return;
   
   const now = new Date();
@@ -42,15 +67,14 @@ async function sendEvent(session) {
     idle: false
   };
 
-  try {
-    await fetch(`${API_URL}/activity/events?device_id=${deviceId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify([event])
-    });
-  } catch (e) {
-    console.error("Failed to sync event", e);
-  }
+  // Add to local queue
+  const data = await chrome.storage.local.get("unsyncedEvents");
+  let queue = data.unsyncedEvents || [];
+  queue.push(event);
+  await chrome.storage.local.set({ unsyncedEvents: queue });
+
+  // Attempt to flush queue
+  await syncQueue();
 }
 
 async function startSession(tab) {
