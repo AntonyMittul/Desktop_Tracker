@@ -1,4 +1,4 @@
-# ScreenTime Analytics (FocusLens Tracker)
+# ScreenTime Analytics (Tracker)
 
 A fully automated, privacy-first local screentime tracker built to help you understand and optimize your digital habits. 
 
