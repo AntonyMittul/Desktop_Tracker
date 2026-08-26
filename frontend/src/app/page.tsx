@@ -133,7 +133,6 @@ export default function Dashboard() {
             title="Active Time" 
             value={formatDuration(activeSeconds)} 
             icon={Target} 
-            trend={totalSeconds > 0 ? `${Math.round((activeSeconds/totalSeconds)*100)}% of total` : undefined}
           />
           <StatCard 
             title="Idle Time" 

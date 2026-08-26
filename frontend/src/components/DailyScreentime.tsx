@@ -76,7 +76,7 @@ export default function DailyScreentime({
     <div className="bg-white/90 backdrop-blur-sm p-4 lg:p-6 rounded-[24px] shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-stone-100/50 h-full flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
       <div className="flex justify-between items-center mb-2 lg:mb-4 flex-none">
         <h2 className="text-lg lg:text-xl font-semibold text-stone-800 tracking-tight flex items-center">
-          <span className="mr-2 opacity-80">📅</span> Daily Screentime
+          Daily Screentime
         </h2>
         <div className="flex items-center space-x-3 text-stone-600">
           <button onClick={onPrevWeek} className="p-1 hover:bg-stone-100 rounded-full transition-colors duration-200">
@@ -134,7 +134,7 @@ export default function DailyScreentime({
                   <Cell 
                     key={`cell-${index}`} 
                     cursor="pointer"
-                    fill={isSelected ? '#4285F4' : '#E8F0FE'} 
+                    fill={isSelected ? '#1A73E8' : '#4285F4'} 
                     className="transition-colors duration-300"
                   />
                 );
