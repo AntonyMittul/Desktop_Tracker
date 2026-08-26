@@ -126,6 +126,35 @@ class FocusWidget:
         self.thread = threading.Thread(target=self.fetch_data_loop, daemon=True)
         self.thread.start()
         
+        self.root.update()
+        self.pin_to_desktop()
+        
+    def pin_to_desktop(self):
+        try:
+            import ctypes
+            hwnd = ctypes.windll.user32.GetParent(self.root.winfo_id())
+            
+            progman = ctypes.windll.user32.FindWindowW("Progman", None)
+            ctypes.windll.user32.SendMessageTimeoutW(progman, 0x052C, 0, 0, 0, 1000, None)
+            
+            workerw = 0
+            def enum_windows(hwnd_w, lParam):
+                nonlocal workerw
+                p = ctypes.windll.user32.FindWindowExW(hwnd_w, 0, "SHELLDLL_DefView", None)
+                if p != 0:
+                    workerw = ctypes.windll.user32.FindWindowExW(0, hwnd_w, "WorkerW", None)
+                return True
+            
+            WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
+            ctypes.windll.user32.EnumWindows(WNDENUMPROC(enum_windows), 0)
+            
+            if workerw:
+                ctypes.windll.user32.SetParent(hwnd, workerw)
+            elif progman:
+                ctypes.windll.user32.SetParent(hwnd, progman)
+        except Exception as e:
+            print("Failed to pin to desktop:", e)
+            
     def start_move(self, event):
         self.x = event.x
         self.y = event.y
