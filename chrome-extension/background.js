@@ -108,8 +108,20 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 chrome.idle.setDetectionInterval(300);
 
 chrome.idle.onStateChanged.addListener(async (newState) => {
-  if (newState === "locked" || newState === "idle") {
-    console.log(`System went ${newState}. Ending session.`);
+  if (newState === "locked") {
+    console.log(`System went locked. Ending session.`);
+    await chrome.storage.local.set({ isChromeFocused: false });
+    await startSession(null);
+  } else if (newState === "idle") {
+    try {
+      const query = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      if (query.length > 0 && query[0].audible) {
+        console.log("System went idle but active tab is audible (e.g. video playing). Ignoring idle state.");
+        return;
+      }
+    } catch (e) {}
+    
+    console.log(`System went idle. Ending session.`);
     await chrome.storage.local.set({ isChromeFocused: false });
     await startSession(null);
   } else if (newState === "active") {
