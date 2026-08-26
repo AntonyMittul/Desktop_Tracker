@@ -2,8 +2,9 @@ import requests
 import logging
 import platform
 
-BASE_URL = "http://localhost:8000"
+import os
 
+BASE_URL = os.getenv("API_URL", "http://localhost:8000")
 def register_device(user_id=1):
     try:
         # In a real app, user_id would be configured after login
