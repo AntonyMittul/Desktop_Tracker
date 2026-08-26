@@ -110,7 +110,7 @@ export default function Dashboard() {
         
         <header className="flex-none flex justify-between items-end">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-semibold text-stone-800 tracking-tight">FocusLens Dashboard</h1>
+            <h1 className="text-2xl lg:text-3xl font-semibold text-stone-800 tracking-tight">ScreenTime Analytics</h1>
             <p className="text-stone-500 mt-1 text-sm lg:text-base font-medium">{overviewTitle}</p>
           </div>
           {selectedDateStr && (
