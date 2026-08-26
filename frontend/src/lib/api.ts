@@ -83,11 +83,21 @@ export const flattenEvents = (eventsData: ActivityEvent[]): ActivityEvent[] => {
 };
 
 export const getTodayEvents = async (userId: number = 1): Promise<ActivityEvent[]> => {
-  const response = await api.get(`/activity/today?user_id=${userId}`);
-  return flattenEvents(response.data);
+  try {
+    const response = await api.get(`/activity/today?user_id=${userId}`);
+    return flattenEvents(response.data);
+  } catch (error) {
+    console.warn("Backend unreachable for getTodayEvents:", error);
+    return [];
+  }
 };
 
 export const getHistoricalEvents = async (startDate: string, endDate: string, userId: number = 1): Promise<ActivityEvent[]> => {
-  const response = await api.get(`/activity/history?start_date=${startDate}&end_date=${endDate}&user_id=${userId}`);
-  return flattenEvents(response.data);
+  try {
+    const response = await api.get(`/activity/history?start_date=${startDate}&end_date=${endDate}&user_id=${userId}`);
+    return flattenEvents(response.data);
+  } catch (error) {
+    console.warn("Backend unreachable for getHistoricalEvents:", error);
+    return [];
+  }
 };
