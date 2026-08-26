@@ -47,8 +47,8 @@ export default function ActivityRing({ events }: ActivityRingProps) {
   });
 
   const sortedApps = Object.entries(appDurations)
-    .map(([name, duration]) => ({ name, value: Math.round(duration / 60) })) // in minutes
-    .filter(d => d.value > 0)
+    .map(([name, duration]) => ({ name, value: duration })) // store in seconds for precision
+    .filter(d => d.value >= 2) // keep anything 2 seconds or longer
     .sort((a, b) => b.value - a.value);
 
   const top4 = sortedApps.slice(0, 4);
@@ -60,9 +60,9 @@ export default function ActivityRing({ events }: ActivityRingProps) {
     chartData.push({ name: 'Other', value: otherValue });
   }
 
-  const totalMinutes = chartData.reduce((acc, curr) => acc + curr.value, 0);
-  const totalHours = Math.floor(totalMinutes / 60);
-  const totalMins = totalMinutes % 60;
+  const totalSeconds = chartData.reduce((acc, curr) => acc + curr.value, 0);
+  const totalHours = Math.floor(totalSeconds / 3600);
+  const totalMins = Math.floor((totalSeconds % 3600) / 60);
   const totalText = totalHours > 0 ? `${totalHours} hr, ${totalMins} mins` : `${totalMins} mins`;
 
   const onPieEnter = (_: any, index: number) => {
@@ -111,12 +111,15 @@ export default function ActivityRing({ events }: ActivityRingProps) {
             </Pie>
             <Tooltip 
               formatter={(value: number) => {
-                const h = Math.floor(value / 60);
-                const m = value % 60;
-                const formatted = h > 0 ? `${h}h ${m}m` : `${m}m`;
-                return [formatted, 'Time Spent'];
+                const h = Math.floor(value / 3600);
+                const m = Math.floor((value % 3600) / 60);
+                const s = value % 60;
+                
+                if (h > 0) return [`${h}h ${m}m`, 'Time Spent'];
+                if (m > 0) return [`${m}m ${s}s`, 'Time Spent'];
+                return [`${s}s`, 'Time Spent'];
               }}
-              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08)' }}
             />
           </PieChart>
         </ResponsiveContainer>
