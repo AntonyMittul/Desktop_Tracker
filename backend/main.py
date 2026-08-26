@@ -42,3 +42,7 @@ def ingest_events(device_id: int, events: List[schemas.ActivityEventCreate], db:
 @app.get("/activity/today", response_model=List[schemas.ActivityEventResponse])
 def get_activity_today(user_id: int = 1, db: Session = Depends(get_db)):
     return crud.get_todays_events(db=db, user_id=user_id)
+
+@app.get("/activity/history", response_model=List[schemas.ActivityEventResponse])
+def get_activity_history(start_date: str, end_date: str, user_id: int = 1, db: Session = Depends(get_db)):
+    return crud.get_historical_events(db=db, user_id=user_id, start_date_str=start_date, end_date_str=end_date)

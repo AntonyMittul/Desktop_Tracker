@@ -103,3 +103,23 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
     } catch (e) {}
   }
 });
+
+// Detect when the user's PC is locked or they are away for 5 minutes
+chrome.idle.setDetectionInterval(300);
+
+chrome.idle.onStateChanged.addListener(async (newState) => {
+  if (newState === "locked" || newState === "idle") {
+    console.log(`System went ${newState}. Ending session.`);
+    await chrome.storage.local.set({ isChromeFocused: false });
+    await startSession(null);
+  } else if (newState === "active") {
+    console.log("System became active. Resuming session.");
+    await chrome.storage.local.set({ isChromeFocused: true });
+    try {
+      const query = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      if (query.length > 0) {
+        await startSession(query[0]);
+      }
+    } catch (e) {}
+  }
+});

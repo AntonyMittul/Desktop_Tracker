@@ -1,6 +1,12 @@
 @import "tailwindcss";
 
 body {
-  background-color: #f9fafb; /* bg-gray-50 */
-  color: #111827; /* text-gray-900 */
+  background-color: #FAF9F6; /* warm neutral background */
+  color: #292524; /* stone-800 soft text */
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Fix Recharts black border focus outline */
+.recharts-wrapper *:focus, svg *:focus {
+  outline: none !important;
 }

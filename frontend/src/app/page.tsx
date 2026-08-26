@@ -1,89 +1,88 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Clock, Target, AlertTriangle, Activity } from 'lucide-react';
-import { getTodayEvents, ActivityEvent } from '@/lib/api';
+import { useEffect, useState, useMemo } from 'react';
+import { getTodayEvents, getHistoricalEvents, ActivityEvent } from '@/lib/api';
+import { Activity, Clock, AlertTriangle, Target } from 'lucide-react';
 import { StatCard } from '@/components/StatCard';
-import { AppBreakdown } from '@/components/AppBreakdown';
-import { ActivityTimeline } from '@/components/ActivityTimeline';
+import ActivityRing from '@/components/ActivityRing';
+import DailyScreentime from '@/components/DailyScreentime';
+
+const getWeekRange = (offset: number) => {
+  const now = new Date();
+  const currentDay = now.getDay(); // 0 = Sunday, 6 = Saturday
+  const start = new Date(now);
+  start.setDate(now.getDate() - currentDay + (offset * 7));
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+
+  const formatLocal = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  return { 
+    startStr: formatLocal(start), 
+    endStr: formatLocal(end),
+    start,
+    end
+  };
+};
 
 export default function Dashboard() {
-  const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [todayEvents, setTodayEvents] = useState<ActivityEvent[]>([]);
+  const [historicalEvents, setHistoricalEvents] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Pagination & Selection State
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const eventsData = await getTodayEvents(1);
-        const filteredData = eventsData.filter(e => e.application.toLowerCase() !== 'lockapp.exe');
+        const { startStr, endStr } = getWeekRange(weekOffset);
         
-        // --- Conflict Resolution (Flattening) ---
-        const points: { time: number, type: 'start' | 'end', event: ActivityEvent, isDesktop: boolean }[] = [];
-        filteredData.forEach(e => {
-          let dStr = e.started_at;
-          if (!dStr.endsWith('Z') && !dStr.includes('+')) dStr += 'Z';
-          const start = new Date(dStr).getTime();
-          const end = start + e.duration_seconds * 1000;
-          if (start >= end) return;
-          const isDesktop = e.application !== 'Google Chrome';
-          points.push({ time: start, type: 'start', event: e, isDesktop });
-          points.push({ time: end, type: 'end', event: e, isDesktop });
-        });
+        const [todayData, historyData] = await Promise.all([
+          getTodayEvents(1),
+          getHistoricalEvents(startStr, endStr, 1)
+        ]);
         
-        points.sort((a, b) => a.time - b.time);
-        
-        const activeDesktop = new Set<ActivityEvent>();
-        const activeChrome = new Set<ActivityEvent>();
-        const flattened: ActivityEvent[] = [];
-        
-        let currentEvent: ActivityEvent | null = null;
-        let currentStartTime = 0;
-        
-        for (let i = 0; i < points.length; i++) {
-          const pt = points[i];
-          if (pt.type === 'start') {
-            if (pt.isDesktop) activeDesktop.add(pt.event);
-            else activeChrome.add(pt.event);
-          } else {
-            if (pt.isDesktop) activeDesktop.delete(pt.event);
-            else activeChrome.delete(pt.event);
-          }
-          
-          let winner: ActivityEvent | null = null;
-          if (activeDesktop.size > 0) {
-            winner = Array.from(activeDesktop).sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())[0];
-          } else if (activeChrome.size > 0) {
-            winner = Array.from(activeChrome).sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())[0];
-          }
-          
-          if (winner !== currentEvent) {
-            if (currentEvent && currentStartTime < pt.time) {
-              flattened.push({
-                ...currentEvent,
-                started_at: new Date(currentStartTime).toISOString(),
-                duration_seconds: Math.round((pt.time - currentStartTime) / 1000)
-              });
-            }
-            currentEvent = winner;
-            currentStartTime = pt.time;
-          }
-        }
-        
-        const finalEvents = flattened.filter(e => e.duration_seconds > 0);
-        setEvents(finalEvents);
+        setTodayEvents(todayData);
+        setHistoricalEvents(historyData);
       } catch (e) {
         console.error("Failed to fetch data", e);
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, []);
 
-  const totalSeconds = events.reduce((acc, curr) => acc + curr.duration_seconds, 0);
-  const idleSeconds = events.filter(e => e.idle).reduce((acc, curr) => acc + curr.duration_seconds, 0);
+    fetchData();
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, [weekOffset]); // Re-fetch when week changes
+
+  const displayEvents = useMemo(() => {
+    if (!selectedDateStr) return todayEvents;
+    
+    return historicalEvents.filter(e => {
+      let dStr = e.started_at;
+      if (!dStr.endsWith('Z') && !dStr.includes('+')) dStr += 'Z';
+      const d = new Date(dStr);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const eDate = `${y}-${m}-${day}`;
+      return eDate === selectedDateStr;
+    });
+  }, [selectedDateStr, historicalEvents, todayEvents]);
+
+  const totalSeconds = displayEvents.reduce((acc, curr) => acc + curr.duration_seconds, 0);
+  const idleSeconds = displayEvents.filter(e => e.idle).reduce((acc, curr) => acc + curr.duration_seconds, 0);
   const activeSeconds = totalSeconds - idleSeconds;
 
   const formatDuration = (seconds: number) => {
@@ -93,35 +92,38 @@ export default function Dashboard() {
     return `${mins}m`;
   };
 
-  const appUsage = events.reduce((acc, event) => {
-    let key = event.application;
-    if (event.url) {
-      try {
-        key = new URL(event.url).hostname;
-      } catch (e) {
-        key = event.url;
-      }
-    }
-    acc[key] = (acc[key] || 0) + event.duration_seconds;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const appData = Object.entries(appUsage).map(([application, duration]) => ({ application, duration }));
-
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Loading FocusLens...</div>;
   }
 
+  // Format header date display
+  let overviewTitle = "Today's Activity Overview";
+  if (selectedDateStr) {
+    const [y, m, d] = selectedDateStr.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    overviewTitle = `Activity for ${dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`;
+  }
+
   return (
-    <main className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <main className="h-screen overflow-hidden bg-[#FAF9F6] p-4 lg:p-6 flex flex-col font-sans transition-colors duration-500">
+      <div className="max-w-6xl mx-auto w-full h-full flex flex-col space-y-4 lg:space-y-6">
         
-        <header>
-          <h1 className="text-3xl font-bold text-gray-900">FocusLens Dashboard</h1>
-          <p className="text-gray-500 mt-1">Today's Activity Overview</p>
+        <header className="flex-none flex justify-between items-end">
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-semibold text-stone-800 tracking-tight">FocusLens Dashboard</h1>
+            <p className="text-stone-500 mt-1 text-sm lg:text-base font-medium">{overviewTitle}</p>
+          </div>
+          {selectedDateStr && (
+            <button 
+              onClick={() => setSelectedDateStr(null)}
+              className="text-sm bg-white border border-stone-200 hover:bg-stone-50 hover:shadow-sm text-stone-600 py-1.5 px-4 rounded-full transition-all duration-300 transform active:scale-95"
+            >
+              Back to Today
+            </button>
+          )}
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="flex-none grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
           <StatCard 
             title="Total Tracked Time" 
             value={formatDuration(totalSeconds)} 
@@ -140,17 +142,24 @@ export default function Dashboard() {
           />
           <StatCard 
             title="Context Switches" 
-            value={events.length} 
+            value={displayEvents.length} 
             icon={Activity} 
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <ActivityTimeline events={events} />
+        <div className="flex-grow min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+          <div className="lg:col-span-1 min-h-0">
+            <ActivityRing events={displayEvents} />
           </div>
-          <div className="lg:col-span-1">
-            <AppBreakdown data={appData} />
+          <div className="lg:col-span-1 min-h-0">
+            <DailyScreentime 
+              events={historicalEvents} 
+              weekOffset={weekOffset}
+              onPrevWeek={() => setWeekOffset(prev => prev - 1)}
+              onNextWeek={() => setWeekOffset(prev => prev + 1)}
+              selectedDateStr={selectedDateStr}
+              onBarClick={(dateStr) => setSelectedDateStr(dateStr)}
+            />
           </div>
         </div>
       </div>

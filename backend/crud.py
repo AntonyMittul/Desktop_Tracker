@@ -57,3 +57,14 @@ def get_todays_events(db: Session, user_id: int):
         .filter(models.Device.user_id == user_id)\
         .filter(models.ActivityEvent.started_at >= start_of_day)\
         .all()
+
+def get_historical_events(db: Session, user_id: int, start_date_str: str, end_date_str: str):
+    start_date = datetime.fromisoformat(start_date_str)
+    end_date = datetime.fromisoformat(end_date_str)
+    return db.query(models.ActivityEvent)\
+        .join(models.Device)\
+        .filter(models.Device.user_id == user_id)\
+        .filter(models.ActivityEvent.started_at >= start_date)\
+        .filter(models.ActivityEvent.started_at <= end_date)\
+        .order_by(models.ActivityEvent.started_at.asc())\
+        .all()

@@ -5,7 +5,8 @@
   "description": "Tracks active web usage for FocusLens Dashboard.",
   "permissions": [
     "tabs",
-    "storage"
+    "storage",
+    "idle"
   ],
   "host_permissions": [
     "http://localhost:8000/*"
