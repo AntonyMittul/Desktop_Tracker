@@ -90,8 +90,7 @@ export default function ActivityRing({ events }: ActivityRingProps) {
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              activeIndex={activeIndex}
-              activeShape={renderActiveShape}
+              {...({ activeIndex, activeShape: renderActiveShape } as any)}
               data={chartData}
               cx="50%"
               cy="50%"
@@ -110,7 +109,8 @@ export default function ActivityRing({ events }: ActivityRingProps) {
               ))}
             </Pie>
             <Tooltip 
-              formatter={(value: number) => {
+              formatter={(value: any) => {
+                if (typeof value !== 'number') return [value, 'Time Spent'];
                 const h = Math.floor(value / 3600);
                 const m = Math.floor((value % 3600) / 60);
                 

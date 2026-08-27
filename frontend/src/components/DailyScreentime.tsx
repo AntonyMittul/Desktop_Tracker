@@ -29,7 +29,7 @@ export default function DailyScreentime({
   startOfWeek.setDate(now.getDate() - currentDay + (weekOffset * 7));
   startOfWeek.setHours(0, 0, 0, 0);
 
-  const weekDays = [];
+  const weekDays: { dateStr: string, label: string, hours: number }[] = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(startOfWeek);
     d.setDate(startOfWeek.getDate() + i);
@@ -110,7 +110,8 @@ export default function DailyScreentime({
               tickFormatter={(val) => `${val}h`}
             />
             <Tooltip 
-              formatter={(value: number) => {
+              formatter={(value: any) => {
+                if (typeof value !== 'number') return [value, 'Screentime'];
                 const totalMins = Math.round(value * 60);
                 const h = Math.floor(totalMins / 60);
                 const m = totalMins % 60;
@@ -124,8 +125,12 @@ export default function DailyScreentime({
               radius={[6, 6, 0, 0]} 
               maxBarSize={50}
               activeBar={false}
-              onClick={(data) => {
-                if (data && data.dateStr) onBarClick(data.dateStr);
+              onClick={(data: any) => {
+                if (data && data.activePayload && data.activePayload[0] && data.activePayload[0].payload.dateStr) {
+                    onBarClick(data.activePayload[0].payload.dateStr);
+                } else if (data && data.dateStr) {
+                    onBarClick(data.dateStr);
+                }
               }}
             >
               {chartData.map((entry, index) => {
