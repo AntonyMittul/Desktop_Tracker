@@ -24,6 +24,14 @@ app.add_middleware(
 def read_root():
     return {"message": "FocusLens API is running"}
 
+@app.get("/debug")
+def debug_db(db: Session = Depends(get_db)):
+    try:
+        count = db.query(models.Device).count()
+        return {"status": "ok", "device_count": count}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
 @app.post("/auth/register", response_model=schemas.UserResponse)
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_email(db, email=user.email)
