@@ -7,7 +7,7 @@ import models, schemas, crud
 from database import get_db, engine
 
 # For initial setup before Alembic (optional, Alembic is preferred)
-# models.Base.metadata.create_all(bind=engine)
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="FocusLens API")
 
